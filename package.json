@@ -1,0 +1,13 @@
+{
+    "type": "module",
+    "name": "codex-github-agent",
+    "version": "0.1.0",
+    "main": "dist/index.js",
+    "scripts": { "start": "node dist/index.js", "build": "tsc" },
+    "dependencies": {
+      "@octokit/webhooks": "^14.0.0",
+      "@octokit/auth-app": "^7.0.0",
+      "@octokit/request": "^8.0.0"
+    },
+    "devDependencies": { "typescript": "^5.4.0" }
+  }
