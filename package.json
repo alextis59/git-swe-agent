@@ -8,6 +8,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "jest",
+    "test:coverage": "jest --coverage --testPathIgnorePatterns=__mocks__",
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {

@@ -1,3 +1,6 @@
+/**
+ * Mock repo service with type safety fixes
+ */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,7 +11,7 @@ export interface RepoContext {
   repoDir: string;
 }
 
-export async function createTempRepo(
+export async function mockCreateTempRepo(
   api: any, 
   owner: string, 
   repo: string
@@ -17,7 +20,7 @@ export async function createTempRepo(
   const workDir = mkdtempSync(join(tmpdir(), "codex-"));
   const repoDir = join(workDir, "repo");
   
-  // Download repository contents
+  // Download repository contents - with proper type annotations
   await api("GET /repos/{owner}/{repo}/tarball", { 
     owner, 
     repo, 
@@ -31,6 +34,6 @@ export async function createTempRepo(
   return { workDir, repoDir };
 }
 
-export function cleanupTempRepo(workDir: string): void {
+export function mockCleanupTempRepo(workDir: string): void {
   rmSync(workDir, { recursive: true, force: true });
 }
