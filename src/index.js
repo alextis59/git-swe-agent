@@ -1,5 +1,5 @@
-import { loadConfig } from "./utils/config";
-import { createWebhookServer } from "./app";
+import { loadConfig } from "./utils/config.js";
+import { createWebhookServer } from "./app.js";
 
 // Load application configuration
 const config = loadConfig();

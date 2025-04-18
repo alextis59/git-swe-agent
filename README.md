@@ -10,14 +10,13 @@ git-swe-agent is a lightweight GitHub App that brings terminal‑driven AI autom
 │   ├── __tests__/        # Test files
 │   ├── handlers/         # Event handlers for GitHub webhooks
 │   ├── services/         # Service modules
-│   ├── types/            # TypeScript type definitions
+│   ├── types/            # JSDoc type definitions
 │   ├── utils/            # Utility functions
-│   ├── app.ts            # Webhook server setup
-│   └── index.ts          # Application entry point
+│   ├── app.js            # Webhook server setup
+│   └── index.js          # Application entry point
 ├── .eslintrc.js          # ESLint configuration
 ├── jest.config.js        # Jest configuration
-├── package.json          # Project metadata and dependencies
-└── tsconfig.json         # TypeScript configuration
+└── package.json          # Project metadata and dependencies
 ```
 
 ## Features
@@ -68,9 +67,6 @@ Once deployed, copy the public URL into your GitHub App's "Webhook URL" field an
 ### Running the App
 
 ```bash
-# Build the TypeScript code
-npm run build
-
 # Start the server
 npm start
 
@@ -98,7 +94,7 @@ The project includes a comprehensive test suite with high code coverage:
 
 ## Configuration
 
-All behavior is controlled by environment variables. For advanced tuning you can fork the code and modify the Typescript source. The included `tsconfig.json` and `package.json` define a simple build pipeline with `npm run build`.
+All behavior is controlled by environment variables. For advanced tuning you can fork the code and modify the JavaScript source.
 
 ## Usage
 
@@ -106,7 +102,7 @@ After installation, label any issue with `codex` to have the AI start coding on 
 
 ## Contributing
 
-Contributions are welcome. To propose a change, open an issue or pull request, sign the CLA in your PR description, and include tests written in Typescript. Run `npm run build` to compile, `npm test` to execute tests, and `npm run lint` to enforce style. Please follow semantic commit messages and the Contributor Covenant.
+Contributions are welcome. To propose a change, open an issue or pull request, sign the CLA in your PR description, and include tests. Run `npm test` to execute tests, and `npm run lint` to enforce style. Please follow semantic commit messages and the Contributor Covenant.
 
 ## License
 

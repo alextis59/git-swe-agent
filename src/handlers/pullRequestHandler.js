@@ -1,12 +1,16 @@
-import { AppConfig } from "../types";
-import { runCodex } from "../services/codex";
-import { createOctokitClient } from "../services/octokit";
+import { runCodex } from "../services/codex.js";
+import { createOctokitClient } from "../services/octokit.js";
 
-export async function handlePullRequest(payload: any, config: AppConfig) {
+/**
+ * Handle GitHub pull request events
+ * @param {Object} payload - The webhook event payload
+ * @param {import('../types/index.js').AppConfig} config - Application configuration
+ */
+export async function handlePullRequest(payload, config) {
   const { number, diff_url } = payload.pull_request;
   const { full_name } = payload.repository;
   const [owner, repo] = full_name.split("/");
-  const instId = payload.installation!.id;
+  const instId = payload.installation.id;
   const api = await createOctokitClient(config, instId);
 
   // Fetch pull request diff

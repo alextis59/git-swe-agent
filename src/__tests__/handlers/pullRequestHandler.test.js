@@ -1,20 +1,31 @@
-import { mockHandlePullRequest } from "../__mocks__/handlers";
-import { createOctokitClient } from "../../services/octokit";
-import { runCodex } from "../../services/codex";
-import { AppConfig } from "../../types";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
-// Mock dependencies
-jest.mock("../../services/octokit", () => ({
-  createOctokitClient: jest.fn()
+// Create mock functions
+const mockCreateOctokitClient = jest.fn();
+const mockRunCodex = jest.fn();
+
+// Mock dependencies using unstable_mockModule
+jest.unstable_mockModule("../../services/octokit.js", () => ({
+  createOctokitClient: mockCreateOctokitClient
 }));
 
-jest.mock("../../services/codex", () => ({
-  runCodex: jest.fn()
+jest.unstable_mockModule("../../services/codex.js", () => ({
+  runCodex: mockRunCodex
 }));
+
+// Dynamic imports
+const mockHandlersPromise = import("../__mocks__/handlers.js");
+const octokitPromise = import("../../services/octokit.js");
+const codexPromise = import("../../services/codex.js");
 
 describe("Pull Request Handler", () => {
+  // Store imported modules and functions
+  let mockHandlePullRequest;
+  let createOctokitClient;
+  let runCodex;
+  
   // Test data
-  const mockConfig: AppConfig = {
+  const mockConfig = {
     appId: "test-app-id",
     privateKey: "test-private-key",
     webhookSecret: "test-webhook-secret",
@@ -32,17 +43,26 @@ describe("Pull Request Handler", () => {
   // Mock API function
   const mockApi = jest.fn();
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Extract functions from imported modules
+    const mockHandlers = await mockHandlersPromise;
+    const octokit = await octokitPromise;
+    const codex = await codexPromise;
+    
+    mockHandlePullRequest = mockHandlers.mockHandlePullRequest;
+    createOctokitClient = octokit.createOctokitClient;
+    runCodex = codex.runCodex;
+    
     // Reset all mocks
     jest.resetAllMocks();
     
     // Setup mock returns
-    (createOctokitClient as jest.Mock).mockResolvedValue(mockApi);
+    mockCreateOctokitClient.mockResolvedValue(mockApi);
   });
 
   it("should approve PR if Codex outputs 'APPROVE'", async () => {
     // Setup mocks
-    (runCodex as jest.Mock).mockReturnValue("APPROVE");
+    mockRunCodex.mockReturnValue("APPROVE");
     
     // Create mock payload
     const mockPayload = {
@@ -55,10 +75,10 @@ describe("Pull Request Handler", () => {
     await mockHandlePullRequest(mockPayload, mockConfig);
 
     // Verify Octokit client was created
-    expect(createOctokitClient).toHaveBeenCalledWith(mockConfig, mockInstallationId);
+    expect(mockCreateOctokitClient).toHaveBeenCalledWith(mockConfig, mockInstallationId);
 
     // Verify codex was run with the diff
-    expect(runCodex).toHaveBeenCalledWith(
+    expect(mockRunCodex).toHaveBeenCalledWith(
       expect.any(String),
       expect.stringContaining("Review this diff and reply \"APPROVE\" if perfect:"),
       mockConfig.openaiApiKey
@@ -80,7 +100,7 @@ describe("Pull Request Handler", () => {
   it("should comment on PR if Codex does not output 'APPROVE'", async () => {
     // Setup mocks - Codex returns a review with suggestions
     const mockReview = "Here are some suggestions to improve your code...";
-    (runCodex as jest.Mock).mockReturnValue(mockReview);
+    mockRunCodex.mockReturnValue(mockReview);
     
     // Create mock payload
     const mockPayload = {
@@ -93,7 +113,7 @@ describe("Pull Request Handler", () => {
     await mockHandlePullRequest(mockPayload, mockConfig);
 
     // Verify codex was run
-    expect(runCodex).toHaveBeenCalled();
+    expect(mockRunCodex).toHaveBeenCalled();
 
     // Verify a comment review was posted with the Codex output
     expect(mockApi).toHaveBeenCalledWith(
@@ -110,7 +130,7 @@ describe("Pull Request Handler", () => {
 
   it("should trim the Codex output when checking for 'APPROVE'", async () => {
     // Setup mocks - Codex returns APPROVE with whitespace
-    (runCodex as jest.Mock).mockReturnValue("  APPROVE  ");
+    mockRunCodex.mockReturnValue("  APPROVE  ");
     
     // Create mock payload
     const mockPayload = {

@@ -1,36 +1,66 @@
-import { Webhooks, createNodeMiddleware } from "@octokit/webhooks";
-import http from "http";
-import { createWebhookServer } from "../app";
-import { handleLabeledIssue } from "../handlers/issueHandler";
-import { handlePullRequest } from "../handlers/pullRequestHandler";
-import { handleWorkflowRun } from "../handlers/workflowHandler";
-import { AppConfig } from "../types";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Mock the required dependencies
-jest.mock("@octokit/webhooks", () => ({
-  Webhooks: jest.fn(),
-  createNodeMiddleware: jest.fn()
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Define mock functions
+const mockWebhooks = {
+  on: jest.fn()
+};
+
+const mockCreateNodeMiddleware = jest.fn();
+const mockWebhooksConstructor = jest.fn(() => mockWebhooks);
+const mockCreateServer = jest.fn();
+const mockHandleLabeledIssue = jest.fn();
+const mockHandlePullRequest = jest.fn();
+const mockHandleWorkflowRun = jest.fn();
+
+// Mock dependencies
+jest.unstable_mockModule("@octokit/webhooks", () => ({
+  Webhooks: mockWebhooksConstructor,
+  createNodeMiddleware: mockCreateNodeMiddleware
 }));
 
-jest.mock("http", () => ({
-  createServer: jest.fn()
+// Create a separate module mock resolver for node:http since it's imported as default
+const httpMock = {
+  createServer: mockCreateServer
+};
+
+// Use custom resolver for http
+jest.unstable_mockModule("node:http", () => {
+  return { default: httpMock };
+});
+
+// Use absolute paths for local modules
+const appPath = path.resolve(__dirname, "../app.js");
+const issueHandlerPath = path.resolve(__dirname, "../handlers/issueHandler.js");
+const prHandlerPath = path.resolve(__dirname, "../handlers/pullRequestHandler.js");
+const workflowHandlerPath = path.resolve(__dirname, "../handlers/workflowHandler.js");
+
+// Mock local handlers
+jest.unstable_mockModule(issueHandlerPath, () => ({
+  handleLabeledIssue: mockHandleLabeledIssue
 }));
 
-jest.mock("../handlers/issueHandler", () => ({
-  handleLabeledIssue: jest.fn()
+jest.unstable_mockModule(prHandlerPath, () => ({
+  handlePullRequest: mockHandlePullRequest
 }));
 
-jest.mock("../handlers/pullRequestHandler", () => ({
-  handlePullRequest: jest.fn()
+jest.unstable_mockModule(workflowHandlerPath, () => ({
+  handleWorkflowRun: mockHandleWorkflowRun
 }));
 
-jest.mock("../handlers/workflowHandler", () => ({
-  handleWorkflowRun: jest.fn()
-}));
+// Import the module under test
+const appModulePromise = import(appPath);
 
 describe("App", () => {
+  let createWebhookServer;
+  
   // Test data
-  const mockConfig: AppConfig = {
+  const mockConfig = {
     appId: "test-app-id",
     privateKey: "test-private-key",
     webhookSecret: "test-webhook-secret",
@@ -39,32 +69,32 @@ describe("App", () => {
   };
   
   // Mock objects
-  const mockWebhooks = {
-    on: jest.fn()
-  };
-  
   const mockServer = {
     listen: jest.fn()
   };
   
   const mockMiddleware = "mock-middleware";
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset all mocks
     jest.resetAllMocks();
     
     // Setup mock returns
-    (Webhooks as jest.Mock).mockReturnValue(mockWebhooks);
-    (createNodeMiddleware as jest.Mock).mockReturnValue(mockMiddleware);
-    (http.createServer as jest.Mock).mockReturnValue(mockServer);
+    mockWebhooksConstructor.mockReturnValue(mockWebhooks);
+    mockCreateNodeMiddleware.mockReturnValue(mockMiddleware);
+    mockCreateServer.mockReturnValue(mockServer);
+    
+    // Import the module functions
+    const appModule = await appModulePromise;
+    createWebhookServer = appModule.createWebhookServer;
   });
 
-  it("should create and configure a webhook server", () => {
+  it("should create and configure a webhook server", async () => {
     // Call the function
     const result = createWebhookServer(mockConfig);
 
     // Verify Webhooks was created with correct secret
-    expect(Webhooks).toHaveBeenCalledWith({
+    expect(mockWebhooksConstructor).toHaveBeenCalledWith({
       secret: mockConfig.webhookSecret
     });
 
@@ -90,10 +120,10 @@ describe("App", () => {
     );
 
     // Verify middleware was created
-    expect(createNodeMiddleware).toHaveBeenCalledWith(mockWebhooks);
+    expect(mockCreateNodeMiddleware).toHaveBeenCalledWith(mockWebhooks);
 
     // Verify HTTP server was created with middleware
-    expect(http.createServer).toHaveBeenCalledWith(mockMiddleware);
+    expect(mockCreateServer).toHaveBeenCalledWith(mockMiddleware);
 
     // Verify correct result is returned
     expect(result).toEqual({
@@ -119,7 +149,7 @@ describe("App", () => {
     await issuesHandler(mockEvent);
 
     // Verify handler was called with correct parameters
-    expect(handleLabeledIssue).toHaveBeenCalledWith(mockPayload, mockConfig);
+    expect(mockHandleLabeledIssue).toHaveBeenCalledWith(mockPayload, mockConfig);
   });
 
   it("should call handlePullRequest when pull_request events are triggered", async () => {
@@ -139,7 +169,7 @@ describe("App", () => {
     await pullRequestHandler(mockEvent);
 
     // Verify handler was called with correct parameters
-    expect(handlePullRequest).toHaveBeenCalledWith(mockPayload, mockConfig);
+    expect(mockHandlePullRequest).toHaveBeenCalledWith(mockPayload, mockConfig);
   });
 
   it("should call handleWorkflowRun when workflow_run.completed event is triggered", async () => {
@@ -159,6 +189,6 @@ describe("App", () => {
     await workflowHandler(mockEvent);
 
     // Verify handler was called with correct parameters
-    expect(handleWorkflowRun).toHaveBeenCalledWith(mockPayload, mockConfig);
+    expect(mockHandleWorkflowRun).toHaveBeenCalledWith(mockPayload, mockConfig);
   });
 });

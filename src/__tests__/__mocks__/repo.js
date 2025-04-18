@@ -6,26 +6,24 @@ import { mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-export interface RepoContext {
-  workDir: string;
-  repoDir: string;
-}
-
-export async function mockCreateTempRepo(
-  api: any, 
-  owner: string, 
-  repo: string
-): Promise<RepoContext> {
+/**
+ * Creates a temporary repository
+ * @param {Object} api - Authenticated Octokit client
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @returns {Promise<{workDir: string, repoDir: string}>} Repository context
+ */
+export async function mockCreateTempRepo(api, owner, repo) {
   // Create temporary working directory
   const workDir = mkdtempSync(join(tmpdir(), "codex-"));
   const repoDir = join(workDir, "repo");
   
-  // Download repository contents - with proper type annotations
+  // Download repository contents
   await api("GET /repos/{owner}/{repo}/tarball", { 
     owner, 
     repo, 
     headers: { accept: "application/vnd.github+json" } 
-  }).then((response: { data: ArrayBuffer }) => {
+  }).then((response) => {
     spawnSync("tar", ["xz", "-C", workDir], { 
       input: Buffer.from(response.data) 
     });
@@ -34,6 +32,10 @@ export async function mockCreateTempRepo(
   return { workDir, repoDir };
 }
 
-export function mockCleanupTempRepo(workDir: string): void {
+/**
+ * Cleans up a temporary repository
+ * @param {string} workDir - Working directory to clean up
+ */
+export function mockCleanupTempRepo(workDir) {
   rmSync(workDir, { recursive: true, force: true });
 }

@@ -1,43 +1,71 @@
-import { mockHandleLabeledIssue } from "../__mocks__/handlers";
-import { createOctokitClient } from "../../services/octokit";
-import { runCodex } from "../../services/codex";
-import { createTempRepo, cleanupTempRepo } from "../../services/repo";
-import { 
-  configureGit, 
-  createBranch, 
-  stageAllChanges, 
-  hasChanges, 
-  commitChanges, 
-  pushChanges 
-} from "../../services/git";
-import { AppConfig } from "../../types";
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-// Mock dependencies
-jest.mock("../../services/octokit", () => ({
-  createOctokitClient: jest.fn()
-}));
+// Create mock functions
+const mockCreateOctokitClient = jest.fn();
+const mockRunCodex = jest.fn();
+const mockCreateTempRepo = jest.fn();
+const mockCleanupTempRepo = jest.fn();
+const mockConfigureGit = jest.fn();
+const mockCreateBranch = jest.fn();
+const mockStageAllChanges = jest.fn();
+const mockHasChanges = jest.fn();
+const mockCommitChanges = jest.fn();
+const mockPushChanges = jest.fn();
 
-jest.mock("../../services/codex", () => ({
-  runCodex: jest.fn()
-}));
+// Use unstable_mockModule for ESM compatibility
+jest.unstable_mockModule("../../services/octokit.js", () => {
+  return {
+    createOctokitClient: mockCreateOctokitClient
+  };
+});
 
-jest.mock("../../services/repo", () => ({
-  createTempRepo: jest.fn(),
-  cleanupTempRepo: jest.fn()
-}));
+jest.unstable_mockModule("../../services/codex.js", () => {
+  return {
+    runCodex: mockRunCodex
+  };
+});
 
-jest.mock("../../services/git", () => ({
-  configureGit: jest.fn(),
-  createBranch: jest.fn(),
-  stageAllChanges: jest.fn(),
-  hasChanges: jest.fn(),
-  commitChanges: jest.fn(),
-  pushChanges: jest.fn()
-}));
+jest.unstable_mockModule("../../services/repo.js", () => {
+  return {
+    createTempRepo: mockCreateTempRepo,
+    cleanupTempRepo: mockCleanupTempRepo
+  };
+});
+
+jest.unstable_mockModule("../../services/git.js", () => {
+  return {
+    configureGit: mockConfigureGit,
+    createBranch: mockCreateBranch,
+    stageAllChanges: mockStageAllChanges,
+    hasChanges: mockHasChanges,
+    commitChanges: mockCommitChanges,
+    pushChanges: mockPushChanges
+  };
+});
+
+// Dynamic imports
+const mockHandlersPromise = import("..//__mocks__/handlers.js");
+const octokitPromise = import("../../services/octokit.js");
+const codexPromise = import("../../services/codex.js");
+const repoPromise = import("../../services/repo.js");
+const gitPromise = import("../../services/git.js");
 
 describe("Issue Handler", () => {
+  // Store imported modules and functions
+  let mockHandleLabeledIssue;
+  let createOctokitClient;
+  let runCodex;
+  let createTempRepo;
+  let cleanupTempRepo;
+  let configureGit;
+  let createBranch;
+  let stageAllChanges;
+  let hasChanges;
+  let commitChanges;
+  let pushChanges;
+
   // Test data
-  const mockConfig: AppConfig = {
+  const mockConfig = {
     appId: "test-app-id",
     privateKey: "test-private-key",
     webhookSecret: "test-webhook-secret",
@@ -62,14 +90,33 @@ describe("Issue Handler", () => {
     return Promise.resolve({ data: {} });
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Extract functions from imported modules
+    const mockHandlers = await mockHandlersPromise;
+    const octokit = await octokitPromise;
+    const codex = await codexPromise;
+    const repo = await repoPromise;
+    const git = await gitPromise;
+    
+    mockHandleLabeledIssue = mockHandlers.mockHandleLabeledIssue;
+    createOctokitClient = octokit.createOctokitClient;
+    runCodex = codex.runCodex;
+    createTempRepo = repo.createTempRepo;
+    cleanupTempRepo = repo.cleanupTempRepo;
+    configureGit = git.configureGit;
+    createBranch = git.createBranch;
+    stageAllChanges = git.stageAllChanges;
+    hasChanges = git.hasChanges;
+    commitChanges = git.commitChanges;
+    pushChanges = git.pushChanges;
+    
     // Reset all mocks
     jest.resetAllMocks();
     
     // Setup mock returns
-    (createOctokitClient as jest.Mock).mockResolvedValue(mockApi);
-    (createTempRepo as jest.Mock).mockResolvedValue({ workDir: mockWorkDir, repoDir: mockRepoDir });
-    (hasChanges as jest.Mock).mockReturnValue(true);
+    mockCreateOctokitClient.mockResolvedValue(mockApi);
+    mockCreateTempRepo.mockResolvedValue({ workDir: mockWorkDir, repoDir: mockRepoDir });
+    mockHasChanges.mockReturnValue(true);
   });
 
   it("should skip processing if label is not 'codex'", async () => {
@@ -85,8 +132,8 @@ describe("Issue Handler", () => {
     await mockHandleLabeledIssue(mockPayload, mockConfig);
 
     // Verify no further processing was done
-    expect(createOctokitClient).not.toHaveBeenCalled();
-    expect(createTempRepo).not.toHaveBeenCalled();
+    expect(mockCreateOctokitClient).not.toHaveBeenCalled();
+    expect(mockCreateTempRepo).not.toHaveBeenCalled();
   });
 
   it("should process an issue labeled with 'codex' and create a PR", async () => {
@@ -102,23 +149,23 @@ describe("Issue Handler", () => {
     await mockHandleLabeledIssue(mockPayload, mockConfig);
 
     // Verify Octokit client was created
-    expect(createOctokitClient).toHaveBeenCalledWith(mockConfig, mockInstallationId);
+    expect(mockCreateOctokitClient).toHaveBeenCalledWith(mockConfig, mockInstallationId);
 
     // Verify temp repo was created
-    expect(createTempRepo).toHaveBeenCalledWith(mockApi, mockOwner, mockRepo);
+    expect(mockCreateTempRepo).toHaveBeenCalledWith(mockApi, mockOwner, mockRepo);
 
     // Verify codex was run
-    expect(runCodex).toHaveBeenCalledWith(mockRepoDir, mockIssueBody, mockConfig.openaiApiKey);
+    expect(mockRunCodex).toHaveBeenCalledWith(mockRepoDir, mockIssueBody, mockConfig.openaiApiKey);
 
     // Verify git operations
-    expect(configureGit).toHaveBeenCalledWith(mockRepoDir);
-    expect(createBranch).toHaveBeenCalledWith(mockRepoDir, mockBranchName);
-    expect(stageAllChanges).toHaveBeenCalledWith(mockRepoDir);
-    expect(hasChanges).toHaveBeenCalledWith(mockRepoDir);
-    expect(commitChanges).toHaveBeenCalledWith(mockRepoDir, `Codex changes for #${mockIssueNumber}`);
+    expect(mockConfigureGit).toHaveBeenCalledWith(mockRepoDir);
+    expect(mockCreateBranch).toHaveBeenCalledWith(mockRepoDir, mockBranchName);
+    expect(mockStageAllChanges).toHaveBeenCalledWith(mockRepoDir);
+    expect(mockHasChanges).toHaveBeenCalledWith(mockRepoDir);
+    expect(mockCommitChanges).toHaveBeenCalledWith(mockRepoDir, `Codex changes for #${mockIssueNumber}`);
 
     // Verify changes were pushed
-    expect(pushChanges).toHaveBeenCalledWith(
+    expect(mockPushChanges).toHaveBeenCalledWith(
       mockRepoDir, 
       expect.stringContaining("fake-token-for-testing"), 
       mockBranchName
@@ -138,7 +185,7 @@ describe("Issue Handler", () => {
     );
 
     // Verify cleanup was done
-    expect(cleanupTempRepo).toHaveBeenCalledWith(mockWorkDir);
+    expect(mockCleanupTempRepo).toHaveBeenCalledWith(mockWorkDir);
   });
 
   it("should not create a PR if there are no changes", async () => {
@@ -151,23 +198,23 @@ describe("Issue Handler", () => {
     };
 
     // Set hasChanges to return false
-    (hasChanges as jest.Mock).mockReturnValue(false);
+    mockHasChanges.mockReturnValue(false);
 
     // Call the function
     await mockHandleLabeledIssue(mockPayload, mockConfig);
 
     // Verify basic steps were taken
-    expect(runCodex).toHaveBeenCalled();
-    expect(stageAllChanges).toHaveBeenCalled();
-    expect(hasChanges).toHaveBeenCalled();
+    expect(mockRunCodex).toHaveBeenCalled();
+    expect(mockStageAllChanges).toHaveBeenCalled();
+    expect(mockHasChanges).toHaveBeenCalled();
 
     // Verify no further actions were taken
-    expect(commitChanges).not.toHaveBeenCalled();
-    expect(pushChanges).not.toHaveBeenCalled();
+    expect(mockCommitChanges).not.toHaveBeenCalled();
+    expect(mockPushChanges).not.toHaveBeenCalled();
     expect(mockApi).not.toHaveBeenCalledWith("POST /repos/{owner}/{repo}/pulls", expect.anything());
 
     // Verify cleanup was still done
-    expect(cleanupTempRepo).toHaveBeenCalledWith(mockWorkDir);
+    expect(mockCleanupTempRepo).toHaveBeenCalledWith(mockWorkDir);
   });
 
   it("should use an empty string if issue body is null", async () => {
@@ -183,7 +230,7 @@ describe("Issue Handler", () => {
     await mockHandleLabeledIssue(mockPayload, mockConfig);
 
     // Verify codex was called with the default prompt
-    expect(runCodex).toHaveBeenCalledWith(mockRepoDir, "solve this issue", mockConfig.openaiApiKey);
+    expect(mockRunCodex).toHaveBeenCalledWith(mockRepoDir, "solve this issue", mockConfig.openaiApiKey);
   });
 
   it("should ensure cleanup is done even if an error occurs", async () => {
@@ -196,7 +243,7 @@ describe("Issue Handler", () => {
     };
 
     // Make runCodex throw an error
-    (runCodex as jest.Mock).mockImplementation(() => {
+    mockRunCodex.mockImplementation(() => {
       throw new Error("Test error");
     });
 
@@ -204,6 +251,6 @@ describe("Issue Handler", () => {
     await expect(mockHandleLabeledIssue(mockPayload, mockConfig)).rejects.toThrow("Test error");
 
     // Verify cleanup was still done
-    expect(cleanupTempRepo).toHaveBeenCalledWith(mockWorkDir);
+    expect(mockCleanupTempRepo).toHaveBeenCalledWith(mockWorkDir);
   });
 });

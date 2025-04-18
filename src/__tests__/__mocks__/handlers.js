@@ -3,10 +3,9 @@
  * These mocks isolate the handlers from their dependencies that are causing testing issues
  */
 
-import { AppConfig } from "../../types";
-import { runCodex } from "../../services/codex";
-import { createOctokitClient } from "../../services/octokit";
-import { createTempRepo, cleanupTempRepo } from "../../services/repo";
+import { runCodex } from "../../services/codex.js";
+import { createOctokitClient } from "../../services/octokit.js";
+import { createTempRepo, cleanupTempRepo } from "../../services/repo.js";
 import { 
   configureGit, 
   createBranch, 
@@ -14,16 +13,20 @@ import {
   hasChanges, 
   commitChanges, 
   pushChanges 
-} from "../../services/git";
+} from "../../services/git.js";
 
-// Mock version of the issue handler for testing
-export async function mockHandleLabeledIssue(payload: any, config: AppConfig) {
+/**
+ * Mock version of the issue handler for testing
+ * @param {Object} payload - The webhook payload
+ * @param {import('../../types/index.js').AppConfig} config - The app configuration
+ */
+export async function mockHandleLabeledIssue(payload, config) {
   if (payload.label.name !== "codex") return;
   
   const { number, body, title } = payload.issue;
   const { full_name } = payload.repository;
   const [owner, repo] = full_name.split("/");
-  const instId = payload.installation!.id;
+  const instId = payload.installation.id;
   const api = await createOctokitClient(config, instId);
   
   // Create temporary working directory
@@ -66,12 +69,16 @@ export async function mockHandleLabeledIssue(payload: any, config: AppConfig) {
   }
 }
 
-// Mock version of the pull request handler for testing
-export async function mockHandlePullRequest(payload: any, config: AppConfig) {
+/**
+ * Mock version of the pull request handler for testing
+ * @param {Object} payload - The webhook payload
+ * @param {import('../../types/index.js').AppConfig} config - The app configuration
+ */
+export async function mockHandlePullRequest(payload, config) {
   const { number } = payload.pull_request;
   const { full_name } = payload.repository;
   const [owner, repo] = full_name.split("/");
-  const instId = payload.installation!.id;
+  const instId = payload.installation.id;
   const api = await createOctokitClient(config, instId);
 
   // Mock diff content for testing
@@ -104,14 +111,18 @@ export async function mockHandlePullRequest(payload: any, config: AppConfig) {
   }
 }
 
-// Mock version of the workflow handler for testing
-export async function mockHandleWorkflowRun(payload: any, config: AppConfig) {
+/**
+ * Mock version of the workflow handler for testing
+ * @param {Object} payload - The webhook payload
+ * @param {import('../../types/index.js').AppConfig} config - The app configuration
+ */
+export async function mockHandleWorkflowRun(payload, config) {
   if (payload.workflow_run.conclusion !== "failure") return;
   
   const { id } = payload.workflow_run;
   const { full_name } = payload.repository;
   const [owner, repo] = full_name.split("/");
-  const instId = payload.installation!.id;
+  const instId = payload.installation.id;
   const api = await createOctokitClient(config, instId);
 
   // Mock logs content for testing

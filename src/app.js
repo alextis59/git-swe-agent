@@ -1,11 +1,15 @@
 import { Webhooks, createNodeMiddleware } from "@octokit/webhooks";
 import http from "node:http";
-import { AppConfig } from "./types";
-import { handleLabeledIssue } from "./handlers/issueHandler";
-import { handlePullRequest } from "./handlers/pullRequestHandler";
-import { handleWorkflowRun } from "./handlers/workflowHandler";
+import { handleLabeledIssue } from "./handlers/issueHandler.js";
+import { handlePullRequest } from "./handlers/pullRequestHandler.js";
+import { handleWorkflowRun } from "./handlers/workflowHandler.js";
 
-export function createWebhookServer(config: AppConfig) {
+/**
+ * Creates and returns a webhook server
+ * @param {import('./types/index.js').AppConfig} config - Application configuration
+ * @returns {Object} The server and webhooks instances
+ */
+export function createWebhookServer(config) {
   const webhooks = new Webhooks({ secret: config.webhookSecret });
 
   // Handle issues labeled with "codex"

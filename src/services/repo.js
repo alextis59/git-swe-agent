@@ -3,16 +3,14 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export interface RepoContext {
-  workDir: string;
-  repoDir: string;
-}
-
-export async function createTempRepo(
-  api: any, 
-  owner: string, 
-  repo: string
-): Promise<RepoContext> {
+/**
+ * Creates a temporary working directory and clones the repository
+ * @param {Object} api - Octokit API client
+ * @param {string} owner - Repository owner
+ * @param {string} repo - Repository name
+ * @returns {Promise<Object>} Object containing workDir and repoDir paths
+ */
+export async function createTempRepo(api, owner, repo) {
   // Create temporary working directory
   const workDir = mkdtempSync(join(tmpdir(), "codex-"));
   const repoDir = join(workDir, "repo");
@@ -22,7 +20,7 @@ export async function createTempRepo(
     owner, 
     repo, 
     headers: { accept: "application/vnd.github+json" } 
-  }).then((response: { data: ArrayBuffer }) => {
+  }).then((response) => {
     spawnSync("tar", ["xz", "-C", workDir], { 
       input: Buffer.from(response.data) 
     });
@@ -31,6 +29,10 @@ export async function createTempRepo(
   return { workDir, repoDir };
 }
 
-export function cleanupTempRepo(workDir: string): void {
+/**
+ * Cleans up the temporary working directory
+ * @param {string} workDir - Path to the temporary working directory
+ */
+export function cleanupTempRepo(workDir) {
   rmSync(workDir, { recursive: true, force: true });
 }

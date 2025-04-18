@@ -1,6 +1,8 @@
-import { AppConfig } from '../types';
-
-export function loadConfig(): AppConfig {
+/**
+ * Loads the application configuration from environment variables
+ * @returns {import('../types/index.js').AppConfig} The application configuration
+ */
+export function loadConfig() {
   const {
     APP_ID,
     PRIVATE_KEY,

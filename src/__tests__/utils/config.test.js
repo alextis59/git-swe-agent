@@ -1,6 +1,11 @@
-import { loadConfig } from "../../utils/config";
+import { jest, describe, it, expect, beforeEach, afterEach, afterAll } from '@jest/globals';
+
+// Dynamic import of the module being tested
+const configModulePromise = import("../../utils/config.js");
 
 describe("Config Utility", () => {
+  // Store imported function
+  let loadConfig;
   // Store original environment and console methods
   const originalEnv = { ...process.env };
   const originalExit = process.exit;
@@ -10,12 +15,16 @@ describe("Config Utility", () => {
   const mockExit = jest.fn();
   const mockConsoleError = jest.fn();
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Get the module and extract functions
+    const configModule = await configModulePromise;
+    loadConfig = configModule.loadConfig;
+    
     // Reset environment to original state before each test
     process.env = { ...originalEnv };
     
     // Setup mocks
-    process.exit = mockExit as any;
+    process.exit = mockExit;
     console.error = mockConsoleError;
     
     // Clear mock call history
@@ -34,7 +43,7 @@ describe("Config Utility", () => {
     process.env = originalEnv;
   });
 
-  it("should load configuration from environment variables", () => {
+  it("should load configuration from environment variables", async () => {
     // Setup test environment variables
     process.env.APP_ID = "test-app-id";
     process.env.PRIVATE_KEY = "test-private-key";
@@ -59,7 +68,7 @@ describe("Config Utility", () => {
     expect(mockConsoleError).not.toHaveBeenCalled();
   });
 
-  it("should use default port if PORT is not provided", () => {
+  it("should use default port if PORT is not provided", async () => {
     // Setup test environment variables without PORT
     process.env.APP_ID = "test-app-id";
     process.env.PRIVATE_KEY = "test-private-key";
@@ -74,7 +83,7 @@ describe("Config Utility", () => {
     expect(config.port).toBe(3000);
   });
 
-  it("should exit with error if APP_ID is missing", () => {
+  it("should exit with error if APP_ID is missing", async () => {
     // Setup environment with missing APP_ID
     delete process.env.APP_ID;
     process.env.PRIVATE_KEY = "test-private-key";
@@ -89,7 +98,7 @@ describe("Config Utility", () => {
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
-  it("should exit with error if PRIVATE_KEY is missing", () => {
+  it("should exit with error if PRIVATE_KEY is missing", async () => {
     // Setup environment with missing PRIVATE_KEY
     process.env.APP_ID = "test-app-id";
     delete process.env.PRIVATE_KEY;
@@ -104,7 +113,7 @@ describe("Config Utility", () => {
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
-  it("should exit with error if WEBHOOK_SECRET is missing", () => {
+  it("should exit with error if WEBHOOK_SECRET is missing", async () => {
     // Setup environment with missing WEBHOOK_SECRET
     process.env.APP_ID = "test-app-id";
     process.env.PRIVATE_KEY = "test-private-key";
@@ -119,7 +128,7 @@ describe("Config Utility", () => {
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
-  it("should exit with error if OPENAI_API_KEY is missing", () => {
+  it("should exit with error if OPENAI_API_KEY is missing", async () => {
     // Setup environment with missing OPENAI_API_KEY
     process.env.APP_ID = "test-app-id";
     process.env.PRIVATE_KEY = "test-private-key";

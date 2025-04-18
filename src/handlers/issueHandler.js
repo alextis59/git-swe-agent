@@ -1,16 +1,20 @@
-import { AppConfig } from "../types";
-import { runCodex } from "../services/codex";
-import { createOctokitClient } from "../services/octokit";
-import { createTempRepo, cleanupTempRepo } from "../services/repo";
-import { configureGit, createBranch, stageAllChanges, hasChanges, commitChanges, pushChanges } from "../services/git";
+import { runCodex } from "../services/codex.js";
+import { createOctokitClient } from "../services/octokit.js";
+import { createTempRepo, cleanupTempRepo } from "../services/repo.js";
+import { configureGit, createBranch, stageAllChanges, hasChanges, commitChanges, pushChanges } from "../services/git.js";
 
-export async function handleLabeledIssue(payload: any, config: AppConfig) {
+/**
+ * Handle GitHub issues labeled with "codex"
+ * @param {Object} payload - The webhook event payload
+ * @param {import('../types/index.js').AppConfig} config - Application configuration
+ */
+export async function handleLabeledIssue(payload, config) {
   if (payload.label.name !== "codex") return;
   
   const { number, body, title } = payload.issue;
   const { full_name } = payload.repository;
   const [owner, repo] = full_name.split("/");
-  const instId = payload.installation!.id;
+  const instId = payload.installation.id;
   const api = await createOctokitClient(config, instId);
   
   // Create temporary working directory

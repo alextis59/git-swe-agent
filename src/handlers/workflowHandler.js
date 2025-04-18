@@ -1,14 +1,18 @@
-import { AppConfig } from "../types";
-import { runCodex } from "../services/codex";
-import { createOctokitClient } from "../services/octokit";
+import { runCodex } from "../services/codex.js";
+import { createOctokitClient } from "../services/octokit.js";
 
-export async function handleWorkflowRun(payload: any, config: AppConfig) {
+/**
+ * Handle GitHub workflow run completed events
+ * @param {Object} payload - The webhook event payload
+ * @param {import('../types/index.js').AppConfig} config - Application configuration
+ */
+export async function handleWorkflowRun(payload, config) {
   if (payload.workflow_run.conclusion !== "failure") return;
   
   const { id } = payload.workflow_run;
   const { full_name } = payload.repository;
   const [owner, repo] = full_name.split("/");
-  const instId = payload.installation!.id;
+  const instId = payload.installation.id;
   const api = await createOctokitClient(config, instId);
 
   // Fetch CI run logs
@@ -17,7 +21,7 @@ export async function handleWorkflowRun(payload: any, config: AppConfig) {
     repo, 
     run_id: id, 
     request: { raw: true } 
-  }).then(r => r.data as Buffer);
+  }).then(r => r.data);
   
   // Use Codex to diagnose the failure
   const diagnosis = runCodex(
