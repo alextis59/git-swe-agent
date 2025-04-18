@@ -8,6 +8,6 @@ const config = loadConfig();
 const { server } = createWebhookServer(config);
 
 // Start the server
-server.listen(config.port, () => {
-  console.log(`Codex Agent listening on port ${config.port}`);
+server.listen(config.port, '0.0.0.0', () => {
+  console.log(`Codex Agent listening on port ${config.port} on 0.0.0.0`);
 });
