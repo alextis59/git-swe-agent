@@ -56,14 +56,20 @@ export function createWebhookServer(config) {
   
   // Create the HTTP server with additional healthcheck route
   const server = http.createServer((req, res) => {
-    console.log(`Received request: ${req.method} ${req.url}`);
+    // Don't log health check (GET /) or HEAD requests
+    const isHealthCheck = req.method === 'GET' && req.url === '/';
+    const isHeadRequest = req.method === 'HEAD';
     
-    // Add a simple health check endpoint for GET requests only
-    if (req.method === 'GET' && req.url === '/') {
+    // Only log non-health check and non-HEAD requests
+    if (!isHealthCheck && !isHeadRequest) {
+      console.log(`Received request: ${req.method} ${req.url}`);
+    }
+    
+    // Handle health check endpoint for GET requests only
+    if (isHealthCheck) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'text/plain');
       res.end('OK');
-      console.log('Health check request served');
       return;
     }
     
