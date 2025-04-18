@@ -10,12 +10,15 @@ import { createAppAuth } from "@octokit/auth-app";
 export async function createOctokitClient(config, installationId) {
   console.log(`Creating authenticated Octokit client for app ID ${config.appId} and installation ${installationId}`);
   
+  // Log truncated private key for debugging (but use full key for auth)
+  console.log(`App credentials: ID=${config.appId}, Private key=${config.privateKey ? (config.privateKey.substring(0, 10) + '...') : 'MISSING'}`);
+  
   // Create the Octokit client with authentication
   const authenticatedRequest = request.defaults({
     request: { 
       hook: createAppAuth({ 
         appId: config.appId, 
-        privateKey: config.privateKey?.substring(0, 15) + '...' || '<no-key>', // Log truncated key for security
+        privateKey: config.privateKey, // Use the full private key for authentication
         installationId 
       }) 
     },

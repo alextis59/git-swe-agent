@@ -20,15 +20,6 @@ export async function createTempRepo(api, owner, repo) {
   const workDir = mkdtempSync(tempBase);
   console.log(`Created temp working directory: ${workDir}`);
   
-  const repoDir = join(workDir, "repo");
-  console.log(`Repository directory will be: ${repoDir}`);
-  
-  // Create repo directory if it doesn't exist
-  if (!existsSync(repoDir)) {
-    console.log(`Creating repo directory: ${repoDir}`);
-    mkdirSync(repoDir, { recursive: true });
-  }
-  
   // Download repository contents
   console.log(`Downloading ${owner}/${repo} archive`);
   try {
@@ -63,17 +54,43 @@ export async function createTempRepo(api, owner, repo) {
     
     console.log(`Repository extracted successfully in ${extractDuration.toFixed(2)}s`);
     
-    // Check what we got
+    // Check what we got and find the extracted directory name
     const lsResult = spawnSync("ls", ["-la", workDir]);
+    let extractedDir = null;
+    
     if (lsResult.stdout) {
-      console.log(`Files in temp directory:\n${lsResult.stdout.toString()}`);
+      const output = lsResult.stdout.toString();
+      console.log(`Files in temp directory:\n${output}`);
+      
+      // Find the directory that was extracted (usually in format owner-repo-hash)
+      const dirRegex = new RegExp(`${owner}-${repo}-[a-f0-9]+`, 'i');
+      const lines = output.split('\n');
+      
+      for (const line of lines) {
+        const match = line.match(dirRegex);
+        if (match) {
+          extractedDir = match[0];
+          console.log(`Found extracted directory: ${extractedDir}`);
+          break;
+        }
+      }
     }
+    
+    // Use the extracted directory as our repo directory
+    const repoDir = extractedDir ? join(workDir, extractedDir) : null;
+    
+    if (!repoDir || !existsSync(repoDir)) {
+      console.error(`Could not find extracted repository directory`);
+      throw new Error(`Repository extraction failed: could not find extracted directory`);
+    }
+    
+    console.log(`Using repository directory: ${repoDir}`);
+    return { workDir, repoDir };
+    
   } catch (error) {
     console.error(`Error creating temporary repo:`, error);
     throw error;
   }
-
-  return { workDir, repoDir };
 }
 
 /**
