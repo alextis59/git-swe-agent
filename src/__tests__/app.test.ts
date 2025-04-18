@@ -1,5 +1,5 @@
 import { Webhooks, createNodeMiddleware } from "@octokit/webhooks";
-import http from "node:http";
+import http from "http";
 import { createWebhookServer } from "../app";
 import { handleLabeledIssue } from "../handlers/issueHandler";
 import { handlePullRequest } from "../handlers/pullRequestHandler";
@@ -12,7 +12,7 @@ jest.mock("@octokit/webhooks", () => ({
   createNodeMiddleware: jest.fn()
 }));
 
-jest.mock("node:http", () => ({
+jest.mock("http", () => ({
   createServer: jest.fn()
 }));
 

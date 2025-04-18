@@ -79,7 +79,7 @@ export async function mockHandlePullRequest(payload: any, config: AppConfig) {
   
   // Run Codex review on the diff
   const review = runCodex(
-    process.cwd(), 
+    "./", 
     `Review this diff and reply "APPROVE" if perfect:\n${diff}`,
     config.openaiApiKey
   );
@@ -119,7 +119,7 @@ export async function mockHandleWorkflowRun(payload: any, config: AppConfig) {
   
   // Use Codex to diagnose the failure
   const diagnosis = runCodex(
-    process.cwd(), 
+    "./", 
     "A CI run failed, diagnose briefly:\n" + logs.toString("utf8").slice(0, 50000),
     config.openaiApiKey
   );
