@@ -34,6 +34,8 @@ The service runs on Node.js 22 or newer and requires Docker (for sandboxing) and
 
 ## Quickstart
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/alextis59/git-swe-agent)
+
 Clone this repository and build the Docker image:
 
 ```bash
@@ -42,7 +44,7 @@ cd codex-github-agent
 docker build -t codex-agent .
 ```
 
-Alternatively, click the "Deploy to Render" or "Deploy to Railway" badge in the repo, which will build and launch the service automatically. In either case, configure the following environment variables in your host or platform:
+Alternatively, click the "Deploy to Render" badge above, which will build and launch the service automatically. In either case, configure the following environment variables in your host or platform:
 
 - `APP_ID`: your GitHub App's numeric ID  
 - `PRIVATE_KEY`: the PEM file contents you downloaded when creating the App  
