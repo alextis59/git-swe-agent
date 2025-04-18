@@ -7,7 +7,6 @@ services:
     startCommand: npm start
     healthCheckPath: /
     runtime: node
-    nodeVersion: ~22.0
     autoDeploy: false
     envVars:
       - key: NODE_ENV
