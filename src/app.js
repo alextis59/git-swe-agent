@@ -13,9 +13,36 @@ export function createWebhookServer(config) {
   console.log("Initializing webhook server");
   console.log(`Webhook secret configured: ${config.webhookSecret ? 'YES' : 'NO'} (length: ${config.webhookSecret?.length || 0})`);
   
+  // Log webhook secret first few chars for debugging
+  if (config.webhookSecret) {
+    console.log(`Webhook secret starts with: ${config.webhookSecret.substring(0, 3)}...`);
+  } else {
+    console.error('CRITICAL ERROR: Webhook secret is empty or undefined!');
+  }
+  
+  // Create a debug callback for the verification process
+  const webhookVerify = (request, response, next) => {
+    console.log('WEBHOOK VERIFICATION - START');
+    console.log('Headers:', {
+      event: request.headers['x-github-event'],
+      delivery: request.headers['x-github-delivery']?.substring(0, 10) + '...',
+      signature: request.headers['x-hub-signature-256']?.substring(0, 15) + '...'
+    });
+    
+    // Continue with regular verification
+    next();
+    
+    // Log verification result
+    console.log('WEBHOOK VERIFICATION - RESULT', { 
+      statusCode: response.statusCode,
+      statusMessage: response.statusMessage
+    });
+  };
+
   // Create webhook instance with additional debug options
   const webhooks = new Webhooks({ 
     secret: config.webhookSecret,
+    transform: webhookVerify,
     log: {
       debug: (...args) => console.log('[Webhook Debug]', ...args),
       info: (...args) => console.log('[Webhook Info]', ...args),
@@ -122,8 +149,8 @@ export function createWebhookServer(config) {
         'x-github-delivery': req.headers['x-github-delivery'],
         'content-type': req.headers['content-type'],
         'user-agent': req.headers['user-agent'],
-        'x-hub-signature': req.headers['x-hub-signature'],
-        'x-hub-signature-256': req.headers['x-hub-signature-256']
+        'x-hub-signature': req.headers['x-hub-signature']?.substring(0, 15) + '...',
+        'x-hub-signature-256': req.headers['x-hub-signature-256']?.substring(0, 15) + '...'
       });
       
       // If signature header is missing, this might be why events aren't processed
@@ -131,38 +158,151 @@ export function createWebhookServer(config) {
         console.error('WARNING: Missing signature headers. Webhook verification will likely fail.');
       }
       
+      // DEBUG: Manually verify the webhook secret
+      console.log('Verifying with webhook secret from config:', 
+                  config.webhookSecret ? `Present (${config.webhookSecret.length} chars, starts with: ${config.webhookSecret.substring(0, 3)}...)` : 'Missing!');
+      
       // For debugging, capture and log the payload
-      let body = [];
+      let rawBody = [];
       req.on('data', (chunk) => {
-        body.push(chunk);
+        rawBody.push(chunk);
+      });
+      
+      req.on('end', () => {
+        try {
+          // Create a buffer from the chunks
+          const buffer = Buffer.concat(rawBody);
+          
+          // Convert to string and try to parse as JSON
+          const rawPayload = buffer.toString('utf8');
+          console.log(`Raw payload received (${rawPayload.length} chars)`);
+          
+          try {
+            // Try to parse the payload to verify it's valid JSON
+            const payload = JSON.parse(rawPayload);
+            console.log('Parsed JSON payload with these keys:', Object.keys(payload));
+            console.log('Event type:', req.headers['x-github-event']);
+            console.log('Event action:', payload.action);
+            console.log('Event sender:', payload.sender?.login);
+            console.log('Event repo:', payload.repository?.full_name);
+            
+            if (req.headers['x-github-event'] === 'issues') {
+              console.log('Issues event details:');
+              console.log('- Issue Number:', payload.issue?.number);
+              console.log('- Issue Title:', payload.issue?.title);
+              console.log('- Action:', payload.action);
+              if (payload.action === 'labeled') {
+                console.log('- Label:', payload.label?.name);
+              }
+            }
+          } catch (jsonError) {
+            console.error('Error parsing webhook payload as JSON:', jsonError);
+          }
+          
+        } catch (error) {
+          console.error('Error processing webhook payload:', error);
+        }
       });
       
       // Store original end method to ensure we don't break the middleware
       const originalEnd = res.end;
       res.end = function(...args) {
         // After response is complete, log payload and status
-        const payload = Buffer.concat(body).toString();
         console.log(`Webhook response status: ${res.statusCode}`);
-        
-        try {
-          // Try to parse and log a summary of the payload
-          const jsonPayload = JSON.parse(payload);
-          console.log('Webhook payload summary:', {
-            event: req.headers['x-github-event'],
-            action: jsonPayload.action,
-            repository: jsonPayload.repository?.full_name,
-            sender: jsonPayload.sender?.login
-          });
-        } catch (e) {
-          console.log('Could not parse webhook payload (likely not JSON)');
-        }
         
         // Call original end method to finish the response
         return originalEnd.apply(this, args);
       };
     }
     
-    // Pass all requests to the webhook middleware
+    // Debug mode: For POST webhook requests, try to manually process if headers look right
+    if (req.method === 'POST' && req.url === '/' && 
+        req.headers['x-github-event'] && 
+        (req.headers['x-github-delivery'] || req.headers['x-github-hook-id'])) {
+      
+      console.log('MANUAL WEBHOOK PROCESSING: Detected GitHub webhook request');
+      
+      // Collect the request body for manual processing
+      const chunks = [];
+      req.on('data', chunk => chunks.push(chunk));
+      
+      req.on('end', async () => {
+        try {
+          const eventName = req.headers['x-github-event'];
+          const deliveryId = req.headers['x-github-delivery'] || 'manual-' + Date.now();
+          
+          // Parse the payload
+          const body = Buffer.concat(chunks).toString();
+          const payload = JSON.parse(body);
+          
+          console.log(`MANUAL WEBHOOK PROCESSING: Parsed ${eventName} event (${deliveryId})`);
+          
+          // Now try to manually process the webhook event
+          console.log(`MANUAL WEBHOOK PROCESSING: Event = ${eventName}, Action = ${payload.action}`);
+          
+          // Handle different event types manually
+          if (eventName === 'issues' && payload.action === 'labeled') {
+            if (payload.label && payload.label.name === 'codex') {
+              console.log(`MANUAL WEBHOOK PROCESSING: Processing issue #${payload.issue.number} labeled with 'codex'`);
+              try {
+                await handleLabeledIssue(payload, config);
+                console.log(`MANUAL WEBHOOK PROCESSING: Successfully processed issue #${payload.issue.number}`);
+              } catch (error) {
+                console.error(`MANUAL WEBHOOK PROCESSING: Error processing issue:`, error);
+              }
+            } else {
+              console.log(`MANUAL WEBHOOK PROCESSING: Ignoring issue labeled with '${payload.label?.name}' (not 'codex')`);
+            }
+          } else if (eventName === 'pull_request' && 
+                    (payload.action === 'opened' || payload.action === 'synchronize')) {
+            console.log(`MANUAL WEBHOOK PROCESSING: Processing PR #${payload.pull_request.number}`);
+            try {
+              await handlePullRequest(payload, config);
+              console.log(`MANUAL WEBHOOK PROCESSING: Successfully processed PR #${payload.pull_request.number}`);
+            } catch (error) {
+              console.error(`MANUAL WEBHOOK PROCESSING: Error processing PR:`, error);
+            }
+          } else if (eventName === 'workflow_run' && payload.action === 'completed') {
+            if (payload.workflow_run.conclusion === 'failure') {
+              console.log(`MANUAL WEBHOOK PROCESSING: Processing workflow failure #${payload.workflow_run.id}`);
+              try {
+                await handleWorkflowRun(payload, config);
+                console.log(`MANUAL WEBHOOK PROCESSING: Successfully processed workflow failure`);
+              } catch (error) {
+                console.error(`MANUAL WEBHOOK PROCESSING: Error processing workflow:`, error);
+              }
+            } else {
+              console.log(`MANUAL WEBHOOK PROCESSING: Ignoring workflow with conclusion '${payload.workflow_run.conclusion}'`);
+            }
+          } else if (eventName === 'ping') {
+            console.log(`MANUAL WEBHOOK PROCESSING: Received ping event with zen: "${payload.zen}"`);
+          } else {
+            console.log(`MANUAL WEBHOOK PROCESSING: No handler for ${eventName}.${payload.action} event`);
+          }
+          
+          // Send successful response
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            status: 'success',
+            message: `Manually processed ${eventName} event`
+          }));
+          
+        } catch (error) {
+          console.error('MANUAL WEBHOOK PROCESSING: Error:', error);
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            status: 'error',
+            message: error.message
+          }));
+        }
+      });
+      
+      return; // Skip regular middleware
+    }
+    
+    // For all other requests, pass to the regular webhook middleware
     middleware(req, res);
   });
   
