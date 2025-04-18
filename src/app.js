@@ -58,8 +58,8 @@ export function createWebhookServer(config) {
   const server = http.createServer((req, res) => {
     console.log(`Received request: ${req.method} ${req.url}`);
     
-    // Add a simple health check endpoint
-    if (req.url === '/') {
+    // Add a simple health check endpoint for GET requests only
+    if (req.method === 'GET' && req.url === '/') {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'text/plain');
       res.end('OK');
@@ -69,6 +69,11 @@ export function createWebhookServer(config) {
     
     // Pass all other requests to the webhook middleware
     middleware(req, res);
+    
+    // Log webhook payload for POST requests to root (for debugging)
+    if (req.method === 'POST' && req.url === '/') {
+      console.log('Webhook request received (will be handled by middleware)');
+    }
   });
   
   return { server, webhooks };
