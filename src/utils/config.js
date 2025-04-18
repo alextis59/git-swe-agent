@@ -8,8 +8,10 @@ export function loadConfig() {
     PRIVATE_KEY,
     WEBHOOK_SECRET,
     OPENAI_API_KEY,
-    PORT = "3000",
+    PORT,
   } = process.env;
+  
+  const port = PORT || "3000";
 
   if (!APP_ID || !PRIVATE_KEY || !WEBHOOK_SECRET || !OPENAI_API_KEY) {
     console.error("Missing environment variables");
@@ -21,6 +23,6 @@ export function loadConfig() {
     privateKey: PRIVATE_KEY,
     webhookSecret: WEBHOOK_SECRET,
     openaiApiKey: OPENAI_API_KEY,
-    port: +PORT,
+    port: +port,
   };
 }

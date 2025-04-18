@@ -27,8 +27,22 @@ export function createWebhookServer(config) {
     await handleWorkflowRun(payload, config);
   });
 
-  // Create and return the HTTP server
-  const server = http.createServer(createNodeMiddleware(webhooks));
+  // Create a middleware to handle requests
+  const middleware = createNodeMiddleware(webhooks);
+  
+  // Create the HTTP server with additional healthcheck route
+  const server = http.createServer((req, res) => {
+    // Add a simple health check endpoint
+    if (req.url === '/') {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/plain');
+      res.end('OK');
+      return;
+    }
+    
+    // Pass all other requests to the webhook middleware
+    middleware(req, res);
+  });
   
   return { server, webhooks };
 }
