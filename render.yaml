@@ -2,7 +2,7 @@ services:
   - type: web
     name: git-swe-agent
     env: node
-    plan: starter
+    plan: free
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /
