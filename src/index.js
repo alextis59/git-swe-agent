@@ -7,6 +7,18 @@ console.log("Environment PORT:", process.env.PORT);
 // Load application configuration
 const config = loadConfig();
 
+// Log configuration for debugging (without exposing secrets completely)
+console.log("Configuration:", {
+  appId: config.appId,
+  privateKeyPresent: !!config.privateKey,
+  privateKeyLength: config.privateKey?.length,
+  webhookSecretPresent: !!config.webhookSecret,
+  webhookSecretLength: config.webhookSecret?.length,
+  openaiApiKeyPresent: !!config.openaiApiKey,
+  openaiApiKeyPrefix: config.openaiApiKey?.substring(0, 5) + '...',
+  port: config.port
+});
+
 // Log the resolved port
 console.log("Using port:", config.port);
 
